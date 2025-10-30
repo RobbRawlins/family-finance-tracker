@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Finance Tracker</title>
+
+    <!-- PWA / App Experience Configuration Start -->
+    <!-- Tells iOS to open in full screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Tells Android/Chrome to open in full screen (standalone) mode -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <!-- Links the manifest file (inline data URI used to keep it one file) -->
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiRmFtaWx5IEZpbmFuY2UiLCJzaG9ydF9uYW1lIjoiRmluYW5jZSIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwic3RhcnRfdXJsIjoiLi8ifQ==">
+    <!-- PWA / App Experience Configuration End -->
+
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for better look and feel */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .container-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .transaction-item {
+            display: grid;
+            grid-template-columns: 1fr 3fr 1fr; /* Date | Description/Category | Amount */
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="app" class="max-w-md mx-auto p-4 sm:p-6 pb-20">
+
+        <!-- Header and Balance Card -->
+        <header class="text-center mb-6 p-4 bg-white rounded-xl container-shadow">
+            <h1 class="text-xl font-bold text-gray-800">Shared Finances</h1>
+            <p id="user-info" class="text-xs text-gray-500 mt-1 mb-3"></p>
+            <div class="mt-3">
+                <p class="text-sm text-gray-500">Current Balance</p>
+                <h2 id="current-balance" class="text-4xl font-extrabold text-gray-900 mt-1">
+                    $0.00
+                </h2>
+            </div>
+        </header>
+
+        <!-- Transaction History -->
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Transaction History</h3>
+            <div id="transaction-list" class="space-y-3">
+                <p id="loading-indicator" class="text-center text-gray-500">Loading transactions...</p>
+                <!-- Transactions will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button for Add Transaction -->
+    <button id="add-transaction-btn"
+        class="fixed bottom-6 right-6 z-10 p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition duration-300">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+    </button>
+
+    <!-- Transaction Modal (Hidden by default) -->
+    <div id="transaction-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-20">
+        <div class="bg-white rounded-xl w-full max-w-sm container-shadow">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4" id="modal-title">Add New Transaction</h2>
+
+                <form id="transaction-form" class="space-y-4">
+                    <!-- Type Selector -->
+                    <div class="flex space-x-2 p-1 bg-gray-100 rounded-lg">
+                        <button type="button" data-type="Expense"
+                            class="transaction-type-btn flex-1 py-2 rounded-lg text-sm font-medium transition duration-150 bg-white text-red-600 shadow-md">
+                            Expense
+                        </button>
+                        <button type="button" data-type="Income"
+                            class="transaction-type-btn flex-1 py-2 rounded-lg text-sm font-medium transition duration-150 text-gray-700 hover:bg-gray-200">
+                            Income
+                        </button>
+                        <input type="hidden" id="transaction-type" name="type" value="Expense">
+                    </div>
+
+                    <!-- Amount -->
+                    <div>
+                        <label for="amount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
+                        <input type="number" step="0.01" id="amount" name="amount" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                        <input type="text" id="description" name="description" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+
+                    <!-- Category -->
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="category" name="category" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                            <option value="Groceries">Groceries</option>
+                            <option value="Rent/Mortgage">Rent/Mortgage</option>
+                            <option value="Bills">Bills</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Salary">Salary</option>
+                            <option value="Investment">Investment</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Date -->
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="date" name="date" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancel-modal-btn"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition duration-150">
+                            Cancel
+                        </button>
+                        <button type="submit" id="save-transaction-btn"
+                            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition duration-150">
+                            Save Transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Global variables for Firebase
+        let app;
+        let db;
+        let auth;
+        let userId = 'anonymous';
+
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore, collection, query, orderBy, onSnapshot,
+            addDoc, serverTimestamp, setLogLevel, Timestamp
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Global Variables and Constants ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const TRANSACTIONS_COLLECTION_PATH = `/artifacts/${appId}/public/data/transactions`;
+
+        // --- DOM Elements ---
+        const balanceEl = document.getElementById('current-balance');
+        const transactionListEl = document.getElementById('transaction-list');
+        const loadingIndicatorEl = document.getElementById('loading-indicator');
+        const userInfoEl = document.getElementById('user-info');
+
+        const modalEl = document.getElementById('transaction-modal');
+        const addBtn = document.getElementById('add-transaction-btn');
+        const cancelBtn = document.getElementById('cancel-modal-btn');
+        const formEl = document.getElementById('transaction-form');
+        const transactionTypeInput = document.getElementById('transaction-type');
+        const typeButtons = document.querySelectorAll('.transaction-type-btn');
+        const dateInput = document.getElementById('date');
+
+        // Set today's date as default for convenience
+        dateInput.value = new Date().toISOString().split('T')[0];
+
+        // --- Utility Functions ---
+
+        /** Formats a number as currency (e.g., 1234.56 -> $1,234.56) */
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+            }).format(amount);
+        };
+
+        /** * Retries a given asynchronous operation with exponential backoff if a 
+         * network error (auth/network-request-failed) occurs.
+         */
+        async function retryOperation(operation, maxRetries = 5) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    return await operation();
+                } catch (error) {
+                    // Only retry for network failures and if we haven't reached max retries
+                    if (error.code === 'auth/network-request-failed' && i < maxRetries - 1) {
+                        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s, 8s, ...
+                        console.log(`[Auth Retry] Network request failed. Retrying in ${delay / 1000}s... (Attempt ${i + 1}/${maxRetries})`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        throw error; // Re-throw unrecoverable errors or the final network error
+                    }
+                }
+            }
+        }
+
+        /** Renders the transaction history and updates the balance. */
+        const renderTransactions = (transactions) => {
+            let totalBalance = 0;
+            transactionListEl.innerHTML = ''; // Clear previous list
+
+            if (transactions.length === 0) {
+                loadingIndicatorEl.textContent = 'No transactions yet. Add your first expense or income!';
+                loadingIndicatorEl.classList.add('text-center', 'py-8');
+                balanceEl.textContent = formatCurrency(0);
+                return;
+            } else {
+                loadingIndicatorEl.classList.remove('text-center', 'py-8');
+                loadingIndicatorEl.textContent = '';
+            }
+
+            // Calculate total balance and render items
+            transactions.forEach(t => {
+                const amount = t.type === 'Income' ? t.amount : -t.amount;
+                totalBalance += amount;
+
+                // Create the transaction list item
+                const item = document.createElement('div');
+                item.className = 'transaction-item bg-white p-3 rounded-lg border-l-4 transition hover:shadow-md ' +
+                    (t.type === 'Income' ? 'border-green-500' : 'border-red-500');
+
+                // 1. Date
+                const datePart = document.createElement('span');
+                const date = t.date instanceof Timestamp ? t.date.toDate() : new Date();
+                datePart.textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                datePart.className = 'text-xs text-gray-500 font-medium self-center';
+                item.appendChild(datePart);
+
+                // 2. Description and Category
+                const descriptionPart = document.createElement('div');
+                descriptionPart.className = 'flex flex-col';
+
+                const descriptionText = document.createElement('p');
+                descriptionText.textContent = t.description;
+                descriptionText.className = 'text-sm font-semibold text-gray-800 truncate';
+                descriptionPart.appendChild(descriptionText);
+
+                const categoryText = document.createElement('p');
+                categoryText.textContent = t.category;
+                categoryText.className = 'text-xs text-gray-500 mt-0.5';
+                descriptionPart.appendChild(categoryText);
+
+                item.appendChild(descriptionPart);
+
+                // 3. Amount
+                const amountPart = document.createElement('span');
+                amountPart.textContent = formatCurrency(Math.abs(t.amount));
+                amountPart.className = 'text-sm font-bold text-right self-center ' +
+                    (t.type === 'Income' ? 'text-green-600' : 'text-red-600');
+                item.appendChild(amountPart);
+
+                transactionListEl.appendChild(item);
+            });
+
+            // Update balance display
+            balanceEl.textContent = formatCurrency(totalBalance);
+            balanceEl.className = 'text-4xl font-extrabold mt-1 ' +
+                (totalBalance >= 0 ? 'text-green-700' : 'text-red-700');
+        };
+
+        // --- Firebase Initialization and Auth ---
+
+        async function initFirebase() {
+            try {
+                // Set Firestore log level to Debug
+                setLogLevel('Debug');
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                const authAttempt = async () => {
+                    // Authenticate user
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token.");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously.");
+                    }
+                };
+
+                // Use the retry mechanism for authentication
+                await retryOperation(authAttempt, 5);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userInfoEl.textContent = `User ID: ${userId.substring(0, 8)}... (Sharing data: ${appId})`;
+                        startListeningForTransactions();
+                    } else {
+                        console.error("Auth state changed but user is null.");
+                        userId = null;
+                        userInfoEl.textContent = 'Authentication failed.';
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase or signing in:", error);
+                loadingIndicatorEl.textContent = 'Error loading application. Check console for details.';
+            }
+        }
+
+        // --- Firestore Real-time Listener ---
+
+        function startListeningForTransactions() {
+            if (!db || !userId) return;
+
+            // Query: Get all documents, ordered by timestamp (newest first)
+            const q = query(
+                collection(db, TRANSACTIONS_COLLECTION_PATH),
+                orderBy('timestamp', 'desc')
+            );
+
+            onSnapshot(q, (snapshot) => {
+                const transactions = [];
+                snapshot.forEach((doc) => {
+                    transactions.push({ id: doc.id, ...doc.data() });
+                });
+                renderTransactions(transactions);
+            }, (error) => {
+                console.error("Error listening to transactions:", error);
+                loadingIndicatorEl.textContent = 'Error fetching data. Try refreshing.';
+            });
+        }
+
+        // --- Form Submission Handler ---
+
+        formEl.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const saveBtn = document.getElementById('save-transaction-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            const formData = new FormData(formEl);
+            const type = formData.get('type');
+            const amount = parseFloat(formData.get('amount'));
+            const description = formData.get('description').trim();
+            const category = formData.get('category').trim();
+            const dateStr = formData.get('date');
+
+            if (isNaN(amount) || amount <= 0 || !description || !dateStr) {
+                console.error("Invalid input data.");
+                // Replaced alert() with console.error as per instruction
+                console.error("Please ensure Amount is greater than 0 and all fields are filled.");
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Transaction';
+                return;
+            }
+
+            try {
+                // Convert date string to Firestore Timestamp
+                const date = new Date(dateStr);
+                const transactionTimestamp = Timestamp.fromDate(date);
+
+                const newTransaction = {
+                    type,
+                    amount: Math.abs(amount), // Ensure amount is positive, sign is handled by type
+                    description,
+                    category,
+                    date: transactionTimestamp,
+                    userId: userId,
+                    timestamp: serverTimestamp() // Use server timestamp for reliable ordering
+                };
+
+                await addDoc(collection(db, TRANSACTIONS_COLLECTION_PATH), newTransaction);
+
+                // Close and reset modal
+                modalEl.classList.add('hidden');
+                formEl.reset();
+                dateInput.value = new Date().toISOString().split('T')[0];
+
+            } catch (error) {
+                console.error("Error saving transaction:", error);
+                // Show error to user
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Transaction';
+            }
+        });
+
+        // --- Modal and Button Handlers ---
+
+        addBtn.addEventListener('click', () => {
+            modalEl.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            // Set default type button selection on open
+            transactionTypeInput.value = 'Expense';
+            typeButtons.forEach(btn => {
+                if (btn.dataset.type === 'Expense') {
+                    btn.classList.add('bg-white', 'text-red-600', 'shadow-md');
+                    btn.classList.remove('text-gray-700', 'hover:bg-gray-200');
+                } else {
+                    btn.classList.remove('bg-white', 'text-red-600', 'shadow-md');
+                    btn.classList.add('text-gray-700', 'hover:bg-gray-200');
+                }
+            });
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modalEl.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            formEl.reset();
+        });
+
+        // Toggle transaction type (Income/Expense)
+        typeButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const selectedType = e.currentTarget.dataset.type;
+                transactionTypeInput.value = selectedType;
+
+                typeButtons.forEach(btn => {
+                    btn.classList.remove('bg-white', 'shadow-md', 'text-green-600', 'text-red-600', 'text-gray-700');
+                    btn.classList.add('text-gray-700', 'hover:bg-gray-200');
+                });
+
+                e.currentTarget.classList.add('bg-white', 'shadow-md');
+                e.currentTarget.classList.remove('text-gray-700', 'hover:bg-gray-200');
+
+                if (selectedType === 'Expense') {
+                    e.currentTarget.classList.add('text-red-600');
+                } else {
+                    e.currentTarget.classList.add('text-green-600');
+                }
+            });
+        });
+
+        // Initialize the app on load
+        window.onload = initFirebase;
+
+    </script>
+</body>
+</html>
