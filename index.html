@@ -158,9 +158,17 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Global Variables and Constants ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+          apiKey: "AIzaSyDOy0e_e0IZTnDa5uUj-h6Jd6AFm_whe1I",
+          authDomain: "family-finance-pwa.firebaseapp.com",
+          projectId: "family-finance-pwa",
+          storageBucket: "family-finance-pwa.appspot.com",
+          messagingSenderId: "296402903350",
+          appId: "1:296402903350:web:8e241a2d1f9a7023aed397",
+          measurementId: "G-LSRHVPJYMC"
+        };
+        const initialAuthToken = undefined;
+        const appId = 'family-finance-pwa'; // <-- Set the app ID to the project ID
         const TRANSACTIONS_COLLECTION_PATH = `/artifacts/${appId}/public/data/transactions`;
 
         // --- DOM Elements ---
@@ -448,3 +456,4 @@
     </script>
 </body>
 </html>
+
