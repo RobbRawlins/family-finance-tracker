@@ -192,9 +192,9 @@
 
         /** Formats a number as currency (e.g., 1234.56 -> $1,234.56) */
         const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('en-US', {
+            return new Intl.NumberFormat('en-IN', {
                 style: 'currency',
-                currency: 'USD',
+                currency: 'INR',
                 minimumFractionDigits: 2,
             }).format(amount);
         };
@@ -456,4 +456,5 @@
     </script>
 </body>
 </html>
+
 
